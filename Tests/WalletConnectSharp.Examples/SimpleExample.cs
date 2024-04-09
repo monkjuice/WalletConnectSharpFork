@@ -6,6 +6,7 @@ using WalletConnectSharp.Sign;
 using WalletConnectSharp.Sign.Models;
 using WalletConnectSharp.Sign.Models.Engine;
 using WalletConnectSharp.Storage;
+using static WalletConnectSharp.Examples.SimpleExample;
 
 namespace WalletConnectSharp.Examples
 {
@@ -136,21 +137,21 @@ namespace WalletConnectSharp.Examples
 
             var namespaces = sessionData.Namespaces;
 
-            var addEthChainBody = BuildChainBody(false);
+            var ethereumChain = BuildChainBody(false); // Toggle to True to use Fantom. False to use Gnosis
 
-            var caip2ChainId = addEthChainBody.Caip2ChainId;
+            var caip2ChainId = $"eip155:{ethereumChain.chainIdDecimal}";
 
             if (!dappConnectOptions.RequiredNamespaces.TryGetValue("eip155", out var @namespace)
                     || !@namespace.Chains.Contains(caip2ChainId))
             {
-                var request = new WalletAddEthereumChain(addEthChainBody);
+                var request = new WalletAddEthereumChain(ethereumChain);
 
                 var response = await client.Request<WalletAddEthereumChain, string>(sessionData.Topic, request);
 
                 return response;
             }
 
-            var data = new WalletSwitchEthereumChain(addEthChainBody.ChainID);
+            var data = new WalletSwitchEthereumChain(ethereumChain.chainIdHex);
             return await client.Request<WalletSwitchEthereumChain, string>(sessionData.Topic, data);
 
         }
@@ -159,41 +160,15 @@ namespace WalletConnectSharp.Examples
         {
             if (useFantomData)
             {
-                var nativeCurrency = new Currency()
-                {
-                    Name = "Fantom",
-                    Symbol = "FTM",
-                    Decimals = 18
-                };
+                var nativeCurrency = new Currency("Fantom", "FTM", 18);
 
-                return new EthereumChain()
-                {
-                    Caip2ChainId = "eip155:" + 250,
-                    ChainID = "0x" + 250.ToString("X"),
-                    ChainName = "Fantom Opera",
-                    RpcUrls = new List<string> { "https://1rpc.io/ftm" },
-                    NativeCurrency = nativeCurrency
-                };
+                return new EthereumChain("250", "Fantom", nativeCurrency, new[] { "https://1rpc.io/ftm" });
             }
             else
             {
-                // Build objects with Gnosis data
-                // Example:
-                var nativeCurrency = new Currency()
-                {
-                    Name = "Gnosis",
-                    Symbol = "GNO",
-                    Decimals = 18
-                };
+                var nativeCurrency = new Currency("Gnosis", "XDAI", 18);
 
-                return new EthereumChain()
-                {
-                    Caip2ChainId = "eip155:" + 100,
-                    ChainID = "0x" + 100.ToString("X"),
-                    ChainName = "Gnosis Chain",
-                    RpcUrls = new List<string> { "https://gnosis.drpc.org" },
-                    NativeCurrency = nativeCurrency
-                };
+                return new EthereumChain("100", "Gnosis", nativeCurrency, new[] { "https://rpc.gnosis.gateway.fm/" });
             }
         }
 
@@ -223,41 +198,61 @@ namespace WalletConnectSharp.Examples
             }
         }
 
-        public class Currency
+        [Serializable]
+        public readonly struct Currency
         {
-            [JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
-            public string Name { get; set; }
+            public readonly string name;
+            public readonly string symbol;
+            public readonly int decimals;
 
-            [JsonProperty("symbol")]
-            public string Symbol { get; set; }
+            public Currency(string name, string symbol, int decimals)
+            {
+                this.name = name;
+                this.symbol = symbol;
+                this.decimals = decimals;
+            }
+        }
 
-            [JsonProperty("decimals")]
-            public uint Decimals { get; set; }
-        };
-
-        [RpcMethod("wallet_addEthereumChain"), RpcRequestOptions(Clock.ONE_MINUTE, 99999)]
+        [Serializable]
         public class EthereumChain
         {
-            public string Caip2ChainId { get; set; }
-
             [JsonProperty("chainId")]
-            public string ChainID { get; set; }
+            public string chainIdHex;
 
             [JsonProperty("chainName")]
-            public string ChainName { get; set; }
-
-            [JsonProperty("rpcUrls")]
-            public List<string> RpcUrls { get; set; }
-
-            [JsonProperty("iconUrls", NullValueHandling = NullValueHandling.Ignore)]
-            public string IconUrls { get; set; }
+            public string name;
 
             [JsonProperty("nativeCurrency")]
-            public Currency NativeCurrency { get; set; }
+            public Currency nativeCurrency;
+
+            [JsonProperty("rpcUrls")]
+            public string[] rpcUrls;
 
             [JsonProperty("blockExplorerUrls", NullValueHandling = NullValueHandling.Ignore)]
-            public List<string> BlockExplorerUrls { get; set; }
-        };
+            public string[] blockExplorerUrls;
+
+            [JsonIgnore]
+            public string chainIdDecimal;
+
+            public EthereumChain()
+            {
+            }
+
+            public EthereumChain(string chainId, string name, Currency nativeCurrency, string[] rpcUrls, string[] blockExplorerUrls = null)
+            {
+                chainIdDecimal = chainId;
+                chainIdHex = ToHex(chainId);
+                this.name = name;
+                this.nativeCurrency = nativeCurrency;
+                this.rpcUrls = rpcUrls;
+                this.blockExplorerUrls = blockExplorerUrls;
+            }
+
+            public string ToHex(string str)
+            {
+                return $"0x{int.Parse(str):X}";
+            }
+        }
 
     }
 }

@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using WalletConnectSharp.Common;
@@ -762,6 +762,9 @@ namespace WalletConnectSharp.Sign
 
                 return Task.CompletedTask;
             };
+
+            Console.WriteLine(request.Params.ToString());
+            Console.WriteLine(request.Method);
 
             id[0] = await MessageHandler.SendRequest<SessionRequest<T>, TR>(topic,
                 new SessionRequest<T>() { ChainId = defaultChainId, Request = request });
