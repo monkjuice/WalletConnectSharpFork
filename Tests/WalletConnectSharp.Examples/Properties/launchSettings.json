@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WalletConnectSharp.Examples": {
+      "commandName": "Project",
+      "commandLineArgs": "simple_example"
+    }
+  }
+}
